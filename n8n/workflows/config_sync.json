@@ -1,0 +1,163 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "path": "get-config-parser",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        912,
+        1040
+      ],
+      "id": "8fa61e6d-ff8a-4b77-8d49-7944c3883af9",
+      "name": "Webhook (Get Config)",
+      "webhookId": ""
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list",
+          "cachedResultName": "Парсинг вакансии",
+          "cachedResultUrl": ""
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Keywords",
+          "cachedResultUrl": ""
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1136,
+        1040
+      ],
+      "id": "b06d70d7-c142-4181-847c-23127992bbab",
+      "name": "Read Keywords",
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "",
+          "name": "Google Sheets API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list",
+          "cachedResultName": "Парсинг вакансии",
+          "cachedResultUrl": ""
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "",
+          "mode": "list",
+          "cachedResultName": "Channels",
+          "cachedResultUrl": ""
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        1344,
+        1040
+      ],
+      "id": "49b984a2-c0f3-4b10-acd3-cd8eae85637f",
+      "name": "Read Channels",
+      "executeOnce": true,
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "",
+          "name": "Google Sheets API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ $json }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1792,
+        1040
+      ],
+      "id": "fadbe39c-6292-4173-bd73-f3720ef87353",
+      "name": "Respond to Python"
+    },
+    {
+      "parameters": {
+        "jsCode": "const rawKeywords = $('Read Keywords').all();\nconst rawChannels = $('Read Channels').all();\n\nlet keywords = [];\nlet stop_words = [];\nlet intents = [];\nlet chats = [];\nlet channels_com = [];\n\n// 1. Обработка ключей, стоп-слов и интентов\nrawKeywords.forEach(item => {\n    const row = item.json;\n    for (const key in row) {\n        const cleanKey = key.toLowerCase().trim();\n        const val = String(row[key]).trim().toLowerCase();\n        \n        if (!val || val === 'undefined' || val === 'null' || val.length < 2) continue;\n\n        if (cleanKey.includes('stop')) {\n            stop_words.push(val);\n        } \n        else if (cleanKey.includes('intent')) {\n            intents.push(val);\n        } \n        else if (cleanKey.includes('word')) {\n            keywords.push(val);\n        }\n    }\n});\n\n// 2. Раздельная обработка чатов и каналов для комментов\nrawChannels.forEach(item => {\n    const row = item.json;\n    \n    const chatVal = row['channels'] || row['Channels'];\n    if (chatVal && String(chatVal).trim() !== 'undefined' && String(chatVal).trim() !== 'null') {\n        const cleanChat = String(chatVal).trim();\n        if (cleanChat.length >= 3) chats.push(cleanChat);\n    }\n    \n    const channelComVal = row['channels_com'] || row['Channels_com'];\n    if (channelComVal && String(channelComVal).trim() !== 'undefined' && String(channelComVal).trim() !== 'null') {\n        const cleanChannel = String(channelComVal).trim();\n        if (cleanChannel.length >= 3) channels_com.push(cleanChannel);\n    }\n});\n\nreturn {\n    keywords: [...new Set(keywords)],\n    stop_words: [...new Set(stop_words)],\n    intents: [...new Set(intents)],\n    chats: [...new Set(chats)],\n    channels_com: [...new Set(channels_com)]\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1584,
+        1040
+      ],
+      "id": "34277c74-05ab-429b-bd70-4a02512a8c33",
+      "name": "Code: Сборка конфига"
+    }
+  ],
+  "connections": {
+    "Webhook (Get Config)": {
+      "main": [
+        [
+          {
+            "node": "Read Keywords",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Keywords": {
+      "main": [
+        [
+          {
+            "node": "Read Channels",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Channels": {
+      "main": [
+        [
+          {
+            "node": "Code: Сборка конфига",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code: Сборка конфига": {
+      "main": [
+        [
+          {
+            "node": "Respond to Python",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
