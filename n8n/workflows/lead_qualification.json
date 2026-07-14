@@ -1,0 +1,274 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list",
+          "cachedResultName": "Парсинг вакансии",
+          "cachedResultUrl": ""
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "",
+          "mode": "list",
+          "cachedResultName": "Leads",
+          "cachedResultUrl": ""
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Date": "={{ $('SET: Унификация данных').item.json.date }}",
+            "Source_Channel": "={{ $('SET: Унификация данных').item.json.channel }}",
+            "User_Link": "={{ $('SET: Унификация данных').item.json.sender }}",
+            "Message_Text": "={{ $('SET: Унификация данных').item.json.text }}",
+            "Link_to_Msg": "={{ $('SET: Унификация данных').item.json.link }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Date",
+              "displayName": "Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Source_Channel",
+              "displayName": "Source_Channel",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "User_Link",
+              "displayName": "User_Link",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Message_Text",
+              "displayName": "Message_Text",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Link_to_Msg",
+              "displayName": "Link_to_Msg",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        2128,
+        1488
+      ],
+      "id": "1d2d3965-a41f-41f5-b2ef-2248a6990cbb",
+      "name": "GS: Запись лида",
+      "retryOnFail": true,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "",
+          "name": "Google Sheets"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "main-parser-input",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        352,
+        1504
+      ],
+      "id": "8076824b-dca9-4b1f-9c83-6112d6f029e8",
+      "name": "HTTP: Прием данных",
+      "webhookId": ""
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-4o-mini",
+          "mode": "list",
+          "cachedResultName": "GPT-4O-MINI"
+        },
+        "responses": {
+          "values": [
+            {
+              "content": "={{ $json.text }}"
+            },
+            {
+              "role": "system",
+              "content": "=You are a strict lead analyst. Your task is to read a message from a marketplace sellers' Telegram chat and determine if it is a request for automation services, development, API integration, spreadsheet/report creation, or web scraping/parsing.\n\nRULES:\n1. If the user is LOOKING for a contractor, ASKING for help, or SEEKING advice regarding automation, APIs, scripts, bots, complex Excel/Google Sheets, or business digitization -> LEAD.\n2. If the user is just complaining, discussing marketplace rules, looking for a designer, manager, fulfillment, accountant, or offering their own services -> NOT A LEAD.\n3. CRITICAL: If the user is a BEGINNER (\"новичок\", \"только начинаем\") or asking basic marketplace questions (e.g., \"Честный знак\", labeling, how to ship, packaging, how to start selling) -> NOT A LEAD.\n4. DO NOT hallucinate or assume. If the user does not explicitly mention IT, automation, APIs, tables, data parsing or bots, it is NOT A LEAD. Do not \"imply\" that they need automation just because they ask for a consultation.\n\nYour response must be STRICTLY in JSON format. Write the reason in Russian.\n{\n  \"is_lead\": true/false,\n  \"reason\": \"Краткое объяснение на русском, почему это лид или почему нет\"\n}"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {
+          "store": false
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.1,
+      "position": [
+        848,
+        1504
+      ],
+      "id": "5fd7b193-c9db-4a62-9b1e-f908a06734b3",
+      "name": "AI: Квалификация лида",
+      "retryOnFail": true,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "openAiApi": {
+          "id": "",
+          "name": "OpenAI API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.is_lead }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        1520,
+        1504
+      ],
+      "id": "c0688a42-a830-4475-b3c1-c4eef6c7d96c",
+      "name": "IF: Это лид?"
+    },
+    {
+      "parameters": {
+        "chatId": "={{ $env.TG_CHAT_ID }}",
+        "text": "=🚀 <b>НОВЫЙ ЦЕЛЕВОЙ ЛИД ({{ $('SET: Унификация данных').item.json.source === 'comment' ? 'КОММЕНТЫ' : ($('SET: Унификация данных').item.json.source === 'chat_outstaff' ? 'АУТСТАФФ' : 'ЧАТ-ЛИД') }})!</b>\n\n<b>📝 Текст:</b> {{ $('SET: Унификация данных').item.json.text }}\n<b>👤 Автор:</b> {{ $('SET: Унификация данных').item.json.sender }}\n<b>📍 Источник:</b> {{ $('SET: Унификация данных').item.json.channel }}\n\n<b>🤖 ИИ:</b> {{ $json.reason || $json.draft }}\n\n<a href=\"{{ $('SET: Унификация данных').item.json.link }}\">🔗 ОТКРЫТЬ СООБЩЕНИЕ В TG</a>",
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        1856,
+        1488
+      ],
+      "id": "b820ea36-39e3-4e1b-a6c0-5f02303de64c",
+      "name": "TG: Отправка уведомления",
+      "webhookId": "",
+      "retryOnFail": true,
+      "waitBetweenTries": 2000,
+      "credentials": {
+        "telegramApi": {
+          "id": "",
+          "name": "Telegram API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Берем данные напрямую со входа, не привязываясь к названию предыдущего узла\nconst incomingData = $input.first().json;\nlet rawText = \"\";\n\nif (incomingData.output && Array.isArray(incomingData.output)) {\n    rawText = incomingData.output[0]?.content[0]?.text || \"\";\n} else if (incomingData.output && typeof incomingData.output === 'string') {\n    rawText = incomingData.output;\n} else if (incomingData.text) {\n    rawText = incomingData.text;\n} else if (incomingData.message && incomingData.message.content) {\n    rawText = incomingData.message.content;\n} else {\n    rawText = JSON.stringify(incomingData);\n}\n\ntry {\n    let cleanText = rawText.replace(/\\n/g, ' ');\n    return { text: cleanText };\n} catch (e) {\n    return { text: rawText };\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1184,
+        1504
+      ],
+      "id": "7876824b-dca9-4b1f-9c83-6112d6f029e8",
+      "name": "SET: Унификация данных"
+    }
+  ],
+  "connections": {
+    "HTTP: Прием данных": {
+      "main": [
+        [
+          {
+            "node": "AI: Квалификация лида",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI: Квалификация лида": {
+      "main": [
+        [
+          {
+            "node": "SET: Унификация данных",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "SET: Унификация данных": {
+      "main": [
+        [
+          {
+            "node": "IF: Это лид?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF: Это лид?": {
+      "main": [
+        [
+          {
+            "node": "TG: Отправка уведомления",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "TG: Отправка уведомления": {
+      "main": [
+        [
+          {
+            "node": "GS: Запись лида",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
