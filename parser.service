@@ -1,0 +1,15 @@
+[Unit]
+Description=Telegram Reserve Parser Service
+After=network.target
+
+[Service]
+Type=simple
+User=your_user
+Group=your_user
+WorkingDirectory=/home/your_user/reserve_parser
+# Загрузка переменных окружения из .env и запуск скрипта
+ExecStart=/bin/bash -c "source /home/your_user/reserve_parser/.env && exec /usr/bin/python3 -u parser.py"
+Restart=always
+
+[Install]
+WantedBy=multi-user.target
